@@ -245,6 +245,13 @@ export default {
                 let ema26 = 0.0
                 let macd = []
                 let signal = []
+                let gains = []
+                let losses = []
+                let totalGains = 0.0
+                let totalLosses = 0.0
+                let avgGains = 0.0
+                let avgLosses = 0.0
+                let rsi = 0.0
                 let masum12 = 0.0
                 let masum26 = 0.0
                 let mamacd = 0.0
@@ -268,15 +275,59 @@ export default {
                 // fibonacci extensions are 0.382, 0.5 and 0.618 for support, and 1.382, 1.5 and 1.618 for resistance
                 for (let i = 0; i < 35; i++) {
                     let price = prices[i]
+                    let priceDiff = i > 0 ? price - prices[i-1] : price - 0
                     masum26 += price
                     masum12 += price
 
+                    if (priceDiff > 0) {
+                      gains.push(priceDiff)
+                    } else if (priceDiff < 0) {
+                      losses.push(priceDiff)
+                    } else {
+                      gains.push(priceDiff)
+                      losses.push(priceDiff)
+                    }
+
                     if (i >= 12) {
+
+                       // calculate 12 day EMA
+
                        masum12 -= prices[i-12]
                        ema12 = masum12 / 12
+
+                       // calculate rsi
+
+                       totalGains = 0
+                       totalLosses = 0
+
+                       for (let j = 0; j < gains.length; j++) {
+                          totalGains += gains[j]
+                       }
+
+                       avgGains = totalGains / gains.length
+
+                       for (let j = 0; j < losses.length; j++) {
+                           totalLosses += losses[j]
+                       }
+
+                       avgLosses = (totalLosses / losses.length) * -1
+
+                       if (gains.length > 14) {
+                         gains.shift()
+                       }
+
+                       if (losses.length > 14) {
+                         losses.shift()
+                       }
+
+                       const rs = avgGains / avgLosses
+                       rsi = 100 - (100 / (1+rs))
                     }
 
                     if (i >= 26) {
+
+                       // calculate 26 day EMA
+
                        masum26 -= prices[i-26]
                        ema26 = masum26 / 26
                        macd[i] = ema12 - ema26
@@ -286,17 +337,13 @@ export default {
 
                 signal[34] = mamacd / 9
 
-                support1 = prices[34] * 0.618
-                support2 = prices[34] * 0.5
-                support3 = prices[34] * 0.382
-                resistance1 = prices[34] * 1.382
-                resistance2 = prices[34] * 1.5
-                resistance3 = prices[34] * 1.618
-
                 // main loop
                 for (let i = 35; i < dates.length; i++) {
                   let price = prices[i]
+                  let priceDiff = price - prices[i-1]
                   nextPrice = price
+
+                  // calculate MACD
                   masum26 += price
                   masum12 += price
                   masum26 -= prices[i-26]
@@ -307,6 +354,8 @@ export default {
                   mamacd += macd[i]
                   mamacd -= macd[i-9]
                   signal[i] = mamacd / 9
+
+                  // calculate fibonacci extensions
                   support1 = price * 0.618
                   support2 = price * 0.5
                   support3 = price * 0.382
@@ -314,14 +363,51 @@ export default {
                   resistance2 = price * 1.5
                   resistance3 = price * 1.618
 
+                  // calculate rsi
+                  if (priceDiff > 0) {
+                    gains.push(priceDiff)
+                  } else if (priceDiff < 0) {
+                    losses.push(priceDiff)
+                  } else {
+                    gains.push(priceDiff)
+                    losses.push(priceDiff)
+                  }
+
+                  totalGains = 0
+                  totalLosses = 0
+
+                  for (let j = 0; j < gains.length; j++) {
+                     totalGains += gains[j]
+                  }
+
+                  avgGains = totalGains / gains.length
+
+                  for (let j = 0; j < losses.length; j++) {
+                      totalLosses += losses[j]
+                  }
+
+                  avgLosses = (totalLosses / losses.length) * -1
+
+                  if (gains.length > 14) {
+                    gains.shift()
+                  }
+
+                  if (losses.length > 14) {
+                    losses.shift()
+                  }
+
+                  const rs = avgGains / avgLosses
+                  rsi = 100 - (100 / (1+rs))
+
                   console.log('ema26: ' + ema26)
                   console.log('ema12: ' + ema12)
                   console.log('macd[i]: ' + macd[i])
                   console.log('signal[i]: ' + signal[i])
+                  console.log('rsi: ' + rsi)
 
-                  // if MACD < Signal time to sell
+                  // if MACD < Signal time to sell and RSI > 70
 
-                  if (macd[i] < signal[i]) {
+                  if (macd[i] < signal[i] && rsi >= 70) {
                     if (bought) {
                        bought = false
                        sold = true
@@ -342,8 +428,8 @@ export default {
                     }
                   }
 
-                  // if MACD > Signal time to buy
-                  else if (macd[i] > signal[i]) {
+                  // if MACD > Signal time to buy and RSI > 40
+                  else if (macd[i] > signal[i] && rsi <= 40) {
                     if (!bought) {
                       bought = true
                       sold = false
@@ -369,7 +455,8 @@ export default {
                 that.analysis += '<h3>Trades were successful ' + (success/trades)*100 + '% of the time</h3>'
                 that.analysis += '<h3>Current support price is ' + support1 + ' and resistance is ' + resistance1 + '</h3>'
                 that.analysis += '<h3>Current MACD is ' + macd[dates.length - 1] + ', prepare to sell if dips below '
-                + signal[dates.length - 1] + ' and prepare to buy if it goes above it.' + '</h3>'
+                + signal[dates.length - 1] + ' and prepare to buy if it goes above it.</h3>'
+                that.analysis += '<h3> Current RSI is ' + rsi + ', buy if it goes below 40 and sell if above 70 </h3>'
 
                 const simulationDates = []
                 const simulationPrices = []
