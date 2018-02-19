@@ -1,7 +1,8 @@
 ## Crypto Simulator Web App
 
 This App is a Node / VueJS App that I created that ports the same functionality of the Stock Simulator React App that
-I created in 2017 except for crypto, and using VueJS.
+I created in 2017 except for crypto, and using VueJS. Instead of using buy and sell limits,
+it uses MACD as an indicator to buy or sell.
 
 It uses the `http://coindesk.com/` API to get the BPI data.
 
@@ -9,6 +10,8 @@ It uses the `http://coindesk.com/` API to get the BPI data.
 
 1) Add support for more coins. Right now Coindesk only allows you to get historical BTC data but as soon as coinmarketcap
 opens up their historical API I can use that.
+
+2) Incorporate other indicators besides MACD like RSI, Volume, Ichimoku, Candlesticks, Renko, Bollinger bands etc
 
 ## Instructions for running
 
